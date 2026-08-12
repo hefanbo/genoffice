@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { IpcRendererEvent } from 'electron'
+import type { AiSettings } from '@genoffice/ai-provider'
 import type {
   AccountLoginEvent,
   AccountStatus,
@@ -204,6 +205,13 @@ const homeApi: HomeApi = {
   async openCloudProject(projectUrl) {
     if (typeof projectUrl !== 'string' || !projectUrl) throw new Error('Invalid project URL.')
     await ipcRenderer.invoke(HOME_CHANNELS.openCloudProject, projectUrl)
+  },
+  async getAiSettings() {
+    const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.getAiSettings)
+    return (result ?? null) as AiSettings
+  },
+  async setAiSettings(settings) {
+    await ipcRenderer.invoke(HOME_CHANNELS.setAiSettings, settings)
   },
 }
 

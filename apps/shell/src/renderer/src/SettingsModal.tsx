@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useI18n } from './locale'
 import type { StringKey } from './locale'
 import type { AccountStatus, UiTheme } from '../../shared/home-api'
+import { AI_PROVIDERS, type AiProviderId, type AiSettings } from '@genoffice/ai-provider'
 import './settings.css'
 
 // ── Settings modal (opened from the account menu) ─────────
@@ -45,11 +46,12 @@ const CHANNEL_OPTIONS = [
   { value: 'beta', labelKey: 'channelBeta' },
 ] as const satisfies readonly { value: 'stable' | 'beta'; labelKey: StringKey }[]
 
-type SectionId = 'account' | 'general' | 'about'
+type SectionId = 'account' | 'general' | 'model' | 'about'
 
 const SECTIONS: readonly { id: SectionId; labelKey: StringKey }[] = [
   { id: 'account', labelKey: 'setSecAccount' },
   { id: 'general', labelKey: 'setSecGeneral' },
+  { id: 'model', labelKey: 'setSecModel' },
   { id: 'about', labelKey: 'setSecAbout' },
 ]
 
@@ -78,6 +80,21 @@ function SectionIcon({ id }: { id: SectionId }) {
         />
         <circle cx="11.5" cy="5" r="1.7" stroke="currentColor" strokeWidth="1.3" />
         <circle cx="4.5" cy="11" r="1.7" stroke="currentColor" strokeWidth="1.3" />
+      </svg>
+    )
+  }
+  if (id === 'model') {
+    return (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path
+          d="M5.5 2.5h5M2.5 5.5v5M13.5 5.5v5M5.5 13.5h5"
+          stroke="currentColor"
+          strokeWidth="1.3"
+          strokeLinecap="round"
+        />
+        <rect x="6.5" y="4.5" width="3" height="6" rx="1" stroke="currentColor" strokeWidth="1.3" />
+        <path d="M6.5 7h3" stroke="currentColor" strokeWidth="1.3" />
+        <path d="M7 9.5h2" stroke="currentColor" strokeWidth="1.3" />
       </svg>
     )
   }
@@ -149,6 +166,8 @@ export function SettingsModal({
   const [saveDir, setSaveDir] = useState('')
   const [channel, setChannel] = useState<'stable' | 'beta'>('stable')
   const [appVersion, setAppVersion] = useState('')
+  const [aiSettings, setAiSettingsState] = useState<AiSettings | null>(null)
+  const saveTimerRef = useRef(0)
 
   useEffect(() => {
     let alive = true
@@ -164,8 +183,12 @@ export function SettingsModal({
     void window.aiOffice.getAppVersion?.().then((v) => {
       if (alive && v) setAppVersion(v)
     })
+    void window.aiOffice.getAiSettings?.().then((s) => {
+      if (alive && s) setAiSettingsState(s)
+    })
     return () => {
       alive = false
+      window.clearTimeout(saveTimerRef.current)
     }
   }, [])
 
@@ -189,6 +212,101 @@ export function SettingsModal({
       if (dir) setSaveDir(dir)
     })
   }
+
+  // Persist AI settings after a short debounce (avoids writing on every keystroke).
+  // Flush immediately on unmount so no edit is lost when the modal closes.
+  const aiSettingsRef = useRef(aiSettings)
+  aiSettingsRef.current = aiSettings
+
+  useEffect(() => {
+    return () => {
+      window.clearTimeout(saveTimerRef.current)
+      // flush any unsaved change immediately on unmount
+      if (aiSettingsRef.current) {
+        void window.aiOffice.setAiSettings?.(aiSettingsRef.current)
+      }
+    }
+  }, [])
+
+  const saveAi = useCallback(
+    (next: AiSettings) => {
+      window.clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = window.setTimeout(() => {
+        void window.aiOffice.setAiSettings?.(next)
+      }, 300)
+    },
+    [],
+  )
+
+  const updateProvider = (provider: AiProviderId) => {
+    if (!aiSettings) return
+    const next = { ...aiSettings, provider, providers: { ...aiSettings.providers } }
+    setAiSettingsState(next)
+    saveAi(next)
+  }
+
+  const updateModel = (model: string) => {
+    if (!aiSettings) return
+    const next = {
+      ...aiSettings,
+      providers: {
+        ...aiSettings.providers,
+        [aiSettings.provider]: { ...aiSettings.providers[aiSettings.provider], model },
+      },
+    }
+    setAiSettingsState(next)
+    saveAi(next)
+  }
+
+  const updateApiKey = (apiKey: string) => {
+    if (!aiSettings) return
+    const next = {
+      ...aiSettings,
+      providers: {
+        ...aiSettings.providers,
+        [aiSettings.provider]: { ...aiSettings.providers[aiSettings.provider], apiKey },
+      },
+    }
+    setAiSettingsState(next)
+    // debounce the save on input (every keystroke would be too much)
+    window.clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = window.setTimeout(() => {
+      void window.aiOffice.setAiSettings?.(next)
+    }, 500)
+  }
+
+  const updateBaseUrl = (baseUrl: string) => {
+    if (!aiSettings) return
+    const next = {
+      ...aiSettings,
+      providers: {
+        ...aiSettings.providers,
+        [aiSettings.provider]: { ...aiSettings.providers[aiSettings.provider], baseUrl },
+      },
+    }
+    setAiSettingsState(next)
+    window.clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = window.setTimeout(() => {
+      void window.aiOffice.setAiSettings?.(next)
+    }, 500)
+  }
+
+  const updateProtocol = (protocol: 'openai' | 'anthropic') => {
+    if (!aiSettings) return
+    const next = {
+      ...aiSettings,
+      providers: {
+        ...aiSettings.providers,
+        [aiSettings.provider]: { ...aiSettings.providers[aiSettings.provider], protocol },
+      },
+    }
+    setAiSettingsState(next)
+    saveAi(next)
+  }
+
+  const activeProvider = AI_PROVIDERS.find((p) => p.id === aiSettings?.provider)
+  const activeConfig = aiSettings?.providers[aiSettings.provider]
+  const isGenspark = aiSettings?.provider === 'genspark'
 
   const loggedIn = status?.loggedIn ?? false
   const email = status?.email ?? ''
@@ -338,6 +456,138 @@ export function SettingsModal({
                     </button>
                   }
                 />
+              </>
+            )}
+            {section === 'model' && aiSettings && (
+              <>
+                <h3 className="set-pane-title">{t('setSecModel')}</h3>
+                <div className="set-field">
+                  <div className="set-field-text">
+                    <label className="set-field-label" htmlFor="set-ai-provider">
+                      {t('setProvider')}
+                    </label>
+                  </div>
+                  <span className="set-select-wrap">
+                    <span className="set-select-text" aria-hidden="true">
+                      {activeProvider?.label ?? aiSettings.provider}
+                    </span>
+                    <select
+                      id="set-ai-provider"
+                      className="set-select"
+                      value={aiSettings.provider}
+                      onChange={(e) => updateProvider(e.target.value as AiProviderId)}
+                    >
+                      {AI_PROVIDERS.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                  </span>
+                </div>
+                {activeProvider?.needsBaseUrl && (
+                  <div className="set-field">
+                    <div className="set-field-text">
+                      <label className="set-field-label" htmlFor="set-ai-protocol">
+                        {t('setProtocol')}
+                      </label>
+                    </div>
+                    <span className="set-select-wrap">
+                      <span className="set-select-text" aria-hidden="true">
+                        {activeConfig?.protocol === 'anthropic' ? 'Anthropic' : 'OpenAI'}
+                      </span>
+                      <select
+                        id="set-ai-protocol"
+                        className="set-select"
+                        value={activeConfig?.protocol ?? 'openai'}
+                        onChange={(e) => updateProtocol(e.target.value as 'openai' | 'anthropic')}
+                      >
+                        <option value="openai">OpenAI</option>
+                        <option value="anthropic">Anthropic</option>
+                      </select>
+                    </span>
+                  </div>
+                )}
+                {activeProvider?.needsBaseUrl && (
+                  <div className="set-field">
+                    <div className="set-field-text">
+                      <label className="set-field-label" htmlFor="set-ai-url">
+                        {t('setBaseUrl')}
+                      </label>
+                    </div>
+                    <input
+                      id="set-ai-url"
+                      className="set-text-input"
+                      type="text"
+                      placeholder="https://api.openai.com/v1"
+                      value={activeConfig?.baseUrl ?? ''}
+                      onChange={(e) => updateBaseUrl(e.target.value)}
+                    />
+                  </div>
+                )}
+                {!isGenspark && (
+                  <div className="set-field">
+                    <div className="set-field-text">
+                      <label className="set-field-label" htmlFor="set-ai-key">
+                        {t('setApiKey')}
+                      </label>
+                    </div>
+                    <input
+                      id="set-ai-key"
+                      className="set-text-input"
+                      type="password"
+                      placeholder={activeProvider?.keyPlaceholder ?? ''}
+                      value={activeConfig?.apiKey ?? ''}
+                      onChange={(e) => updateApiKey(e.target.value)}
+                    />
+                  </div>
+                )}
+                {activeProvider && activeProvider.models.length > 0 && (
+                  <div className="set-field">
+                    <div className="set-field-text">
+                      <label className="set-field-label" htmlFor="set-ai-model">
+                        {t('setModel')}
+                      </label>
+                    </div>
+                    <span className="set-select-wrap">
+                      <span className="set-select-text" aria-hidden="true">
+                        {activeConfig?.model ?? activeProvider.defaultModel}
+                      </span>
+                      <select
+                        id="set-ai-model"
+                        className="set-select"
+                        value={activeConfig?.model ?? activeProvider.defaultModel}
+                        onChange={(e) => updateModel(e.target.value)}
+                      >
+                        {activeProvider.models.map((m) => (
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
+                        ))}
+                      </select>
+                    </span>
+                  </div>
+                )}
+                {activeProvider && activeProvider.models.length === 0 && !isGenspark && (
+                  <div className="set-field">
+                    <div className="set-field-text">
+                      <label className="set-field-label" htmlFor="set-ai-model">
+                        {t('setModel')}
+                      </label>
+                    </div>
+                    <input
+                      id="set-ai-model"
+                      className="set-text-input"
+                      type="text"
+                      placeholder="e.g. gpt-4o"
+                      value={activeConfig?.model ?? ''}
+                      onChange={(e) => updateModel(e.target.value)}
+                    />
+                  </div>
+                )}
+                {isGenspark && (
+                  <p className="set-note">{t('setSecModelGensparkNote')}</p>
+                )}
               </>
             )}
             {section === 'about' && (

@@ -11,8 +11,10 @@ export interface GenSparkAccountStatus {
 export interface AiProviderConfig {
   apiKey: string
   model: string
-  /** only used by the custom (OpenAI-compatible) provider */
+  /** only used by the custom provider */
   baseUrl?: string | undefined
+  /** custom provider API protocol; defaults to 'openai' (OpenAI-compatible /chat/completions). Set to 'anthropic' for Anthropic-compatible /v1/messages endpoints. */
+  protocol?: 'openai' | 'anthropic'
 }
 
 export interface AiProviderMeta {

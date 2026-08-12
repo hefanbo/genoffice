@@ -905,6 +905,9 @@ export async function streamForProvider(
       )
     case 'custom':
       if (!config.baseUrl) throw new Error('A custom provider requires a Base URL')
+      if (config.protocol === 'anthropic') {
+        return streamAnthropic(config, system, messages, tools, maxTokens, cb, config.baseUrl)
+      }
       return streamOpenAiCompatible(config.baseUrl, config, system, messages, tools, maxTokens, cb)
     default:
       throw new Error(`Unknown provider: ${provider}`)

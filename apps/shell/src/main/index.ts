@@ -48,6 +48,7 @@ import {
   windowMenuTemplate,
 } from '@genoffice/electron-utils'
 import { readAppSettings, writeAppSetting } from './app-settings'
+import { defaultAiSettings, resolveAiSettings, type AiSettings } from '@genoffice/ai-provider'
 import {
   clearCloudProjectsStore,
   cloudProjectExternalUrl,
@@ -2054,6 +2055,23 @@ function registerHomeIpc(): void {
   ipcMain.handle(HOME_CHANNELS.openCloudProject, (_event, projectUrl: unknown) => {
     const url = cloudProjectExternalUrl(projectUrl)
     if (url) void shell.openExternal(url)
+  })
+
+  // AI provider settings (BYOK): persisted next to app-settings.json,
+  // shared with editor apps via the same ai-settings.json file.
+  const AI_SETTINGS_PATH = () => join(app.getPath('userData'), 'ai-settings.json')
+
+  ipcMain.handle(HOME_CHANNELS.getAiSettings, (): AiSettings => {
+    const raw = readAppSettings(AI_SETTINGS_PATH())
+    const stored = raw as Partial<AiSettings> & { baseUrl?: string; apiKey?: string; model?: string }
+    return resolveAiSettings(
+      (stored.providers ?? stored.apiKey) ? stored : {},
+      defaultAiSettings(),
+    )
+  })
+
+  ipcMain.handle(HOME_CHANNELS.setAiSettings, (_event, settings: AiSettings) => {
+    writeFileSync(AI_SETTINGS_PATH(), JSON.stringify(settings, null, 2))
   })
 }
 

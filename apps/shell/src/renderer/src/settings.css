@@ -264,3 +264,31 @@
   justify-content: flex-end;
   gap: 8px;
 }
+
+.set-text-input {
+  flex-shrink: 0;
+  width: 260px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.set-text-input:focus {
+  border-color: var(--accent);
+}
+
+.set-text-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.set-note {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}

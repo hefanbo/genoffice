@@ -1,3 +1,4 @@
+import type { AiSettings } from '@genoffice/ai-provider'
 import type { UpdateChannel } from './update-api'
 
 /** UI language; kept self-contained here (mirrors Lang in @genoffice/i18n) */
@@ -134,6 +135,10 @@ export interface HomeApi {
   cloudProjectsSync(): Promise<CloudProjectsSnapshot | null>
   /** open a cloud project (relative '/agents?id=...' URL) in the default browser */
   openCloudProject(projectUrl: string): Promise<void>
+  /** current AI provider settings (persisted in userData/ai-settings.json) */
+  getAiSettings(): Promise<AiSettings>
+  /** save AI provider settings (provider, model, API key per provider) */
+  setAiSettings(settings: AiSettings): Promise<void>
 }
 
 export type CloudProjectKind = 'docs' | 'sheets' | 'slides'
@@ -261,6 +266,8 @@ export const HOME_CHANNELS = {
   cloudProjects: 'home:cloud-projects',
   cloudProjectsCached: 'home:cloud-projects-cached',
   openCloudProject: 'home:open-cloud-project',
+  getAiSettings: 'home:get-ai-settings',
+  setAiSettings: 'home:set-ai-settings',
 } as const
 
 export const PROJECT_CHANNELS = {

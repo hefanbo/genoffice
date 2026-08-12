@@ -161,6 +161,9 @@ export async function chatForProvider(
             ok: false as const,
             error: 'A custom provider requires a Base URL',
           })
+        if (config.protocol === 'anthropic') {
+          return chatAnthropic(wd, config, system, user, config.baseUrl)
+        }
         return chatOpenAiCompatible(wd, config.baseUrl, config, system, user)
       default:
         return Promise.resolve({ ok: false as const, error: `Unknown provider: ${provider}` })
