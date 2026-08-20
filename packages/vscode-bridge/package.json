@@ -1,0 +1,18 @@
+{
+  "name": "@genoffice/vscode-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Typed RPC bridge between GenOffice renderer webviews and the VSCode extension host",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./host": "./src/host.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

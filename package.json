@@ -35,7 +35,9 @@
     "licenses": "node tools/check-licenses.mjs",
     "dist:mac": "npm run notices && npm run build:all && npm run native:build:universal -w @genoffice/sheets && npm run dist:mac -w @genoffice/shell",
     "dist:win": "npm run notices && npm run build:all && npm run dist:win -w @genoffice/shell",
-    "dist:linux": "npm run notices && npm run build:all && npm run dist:linux -w @genoffice/shell"
+    "dist:linux": "npm run notices && npm run build:all && npm run dist:linux -w @genoffice/shell",
+    "build:vscode": "npm run build:webview -w @genoffice/docs && npm run build:webview -w @genoffice/markdown && npm run build -w @genoffice/vscode-ext",
+    "package:vscode": "npm run build:vscode && npm run package -w @genoffice/vscode-ext"
   },
   "dependencies": {
     "ws": "^8.21.1"

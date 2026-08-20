@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Extension (GenOffice)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}/apps/vscode-ext"],
+      "outFiles": ["${workspaceFolder}/apps/vscode-ext/out/**/*.js"]
+    }
+  ]
+}

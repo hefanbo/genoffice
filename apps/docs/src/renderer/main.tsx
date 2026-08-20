@@ -3,9 +3,14 @@ import { htmlLang, type Lang } from '@genoffice/i18n'
 import { App } from './App'
 import { LocaleProvider, setModuleLang } from './i18n/locale'
 import type { UiTheme } from '../shared/ipc'
+import { installWebviewBridge } from './webview-bridge'
 import '@genoffice/ui/tokens.css'
 import './styles.css'
 import './fonts/fonts.css'
+
+// In a VSCode webview (no Electron preload), back `window.desktop`/`window.projectApi`
+// with the postMessage RPC bridge. Must run before `bootstrap()` reads them.
+installWebviewBridge()
 
 function applyTheme(theme: UiTheme): void {
   if (theme === 'system') document.documentElement.removeAttribute('data-theme')

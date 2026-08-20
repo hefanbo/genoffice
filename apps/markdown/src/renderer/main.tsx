@@ -7,8 +7,10 @@ import '@genoffice/ui/tokens.css'
 import '@genoffice/ui/screentip.css'
 import './styles.css'
 import { installScreenTips } from '@genoffice/ui'
+import { installWebviewBridge } from './webview-bridge'
 
 installScreenTips()
+installWebviewBridge()
 
 function applyTheme(theme: UiTheme): void {
   if (theme === 'system') document.documentElement.removeAttribute('data-theme')

@@ -10,6 +10,7 @@
     "dev": "electron-vite dev",
     "dev:renderer": "vite --config vite.renderer.config.ts",
     "build": "electron-vite build",
+    "build:webview": "vite build --config vite.webview.config.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
@@ -21,6 +22,7 @@
     "@genoffice/i18n": "*",
     "@genoffice/project-store": "*",
     "@genoffice/ui": "*",
+    "@genoffice/vscode-bridge": "*",
     "@tiptap/core": "3.29.2",
     "@tiptap/extension-code-block": "3.29.2",
     "@tiptap/extension-image": "3.29.2",

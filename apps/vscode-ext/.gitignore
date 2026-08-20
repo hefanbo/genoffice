@@ -1,0 +1,5 @@
+# Build outputs (esbuild host bundle -> out/, vite webview bundles -> media/)
+out/
+media/
+node_modules/
+*.tsbuildinfo

@@ -1,0 +1,182 @@
+{
+  "name": "@genoffice/vscode-ext",
+  "displayName": "GenOffice",
+  "description": "AI-native office suite for VSCode: edit .docx, .pptx, .xlsx, .pdf and .md files",
+  "version": "0.1.0",
+  "publisher": "genoffice",
+  "license": "Apache-2.0",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCustomEditor:genoffice.docx",
+    "onCustomEditor:genoffice.markdown"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "genoffice.docx",
+        "displayName": "GenOffice Docs",
+        "selector": [
+          {
+            "filenamePattern": "*.docx"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "genoffice.markdown",
+        "displayName": "GenOffice Markdown",
+        "selector": [
+          {
+            "filenamePattern": "*.md"
+          },
+          {
+            "filenamePattern": "*.markdown"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "commands": [
+      {
+        "command": "genoffice.docs.save",
+        "title": "Save",
+        "category": "GenOffice"
+      },
+      {
+        "command": "genoffice.docs.saveAs",
+        "title": "Save As…",
+        "category": "GenOffice"
+      },
+      {
+        "command": "genoffice.docs.toggleAi",
+        "title": "Toggle AI Panel",
+        "category": "GenOffice"
+      },
+      {
+        "command": "genoffice.docs.wordCount",
+        "title": "Word Count",
+        "category": "GenOffice"
+      },
+      {
+        "command": "genoffice.docs.find",
+        "title": "Find",
+        "category": "GenOffice"
+      },
+      {
+        "command": "genoffice.docs.exportPdf",
+        "title": "Export to PDF…",
+        "category": "GenOffice"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "genoffice.docs.toggleAi",
+          "when": "activeCustomEditorId == genoffice.docx",
+          "group": "navigation@1"
+        },
+        {
+          "command": "genoffice.docs.exportPdf",
+          "when": "activeCustomEditorId == genoffice.docx",
+          "group": "navigation@2"
+        },
+        {
+          "command": "genoffice.docs.save",
+          "when": "activeCustomEditorId == genoffice.docx",
+          "group": "navigation@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "genoffice.docs.save",
+          "when": "activeCustomEditorId == genoffice.docx"
+        },
+        {
+          "command": "genoffice.docs.saveAs",
+          "when": "activeCustomEditorId == genoffice.docx"
+        },
+        {
+          "command": "genoffice.docs.toggleAi",
+          "when": "activeCustomEditorId == genoffice.docx"
+        },
+        {
+          "command": "genoffice.docs.wordCount",
+          "when": "activeCustomEditorId == genoffice.docx"
+        },
+        {
+          "command": "genoffice.docs.find",
+          "when": "activeCustomEditorId == genoffice.docx"
+        },
+        {
+          "command": "genoffice.docs.exportPdf",
+          "when": "activeCustomEditorId == genoffice.docx"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "genoffice.docs.save",
+        "key": "ctrl+s",
+        "mac": "cmd+s",
+        "when": "activeCustomEditorId == genoffice.docx"
+      },
+      {
+        "command": "genoffice.docs.saveAs",
+        "key": "ctrl+shift+s",
+        "mac": "cmd+shift+s",
+        "when": "activeCustomEditorId == genoffice.docx"
+      },
+      {
+        "command": "genoffice.docs.find",
+        "key": "ctrl+f",
+        "mac": "cmd+f",
+        "when": "activeCustomEditorId == genoffice.docx"
+      }
+    ],
+    "configuration": {
+      "title": "GenOffice",
+      "properties": {
+        "genoffice.ai.provider": {
+          "type": "string",
+          "default": "genspark",
+          "description": "Default AI provider for the assistant."
+        },
+        "genoffice.ai.model": {
+          "type": "string",
+          "default": "",
+          "description": "Model override for the selected AI provider (empty = provider default)."
+        },
+        "genoffice.ai.baseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Custom base URL (for the 'custom' provider)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "typecheck": "tsc --noEmit",
+    "package": "vsce package",
+    "vscode:prepublish": "node esbuild.config.mjs"
+  },
+  "devDependencies": {
+    "@genoffice/ai-provider": "*",
+    "@genoffice/docx-engine": "*",
+    "@genoffice/file-parse": "*",
+    "@genoffice/font-metrics": "*",
+    "@genoffice/project-store": "*",
+    "@genoffice/vscode-bridge": "*",
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.90.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.9.3"
+  }
+}
