@@ -46,6 +46,7 @@ export function installWebviewBridge(): void {
       rpc.invoke('docs:save', path, bytesToBase64(data), auto === true),
     writeRecoveryCopy: (path: string, data: ArrayBuffer) =>
       rpc.invoke('docs:write-recovery', path, bytesToBase64(data)),
+    setDirty: (dirty: boolean) => rpc.send('docs:dirty-changed', dirty),
     onTeardown: (handler: () => void) => rpc.on('docs:teardown', handler),
     saveDocxAs: (defaultName: string, data: ArrayBuffer) =>
       rpc.invoke('docs:save-as', defaultName, bytesToBase64(data)),

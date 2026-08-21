@@ -669,8 +669,11 @@ export function App() {
     onSelectionUpdate: () => forceRender(),
     // typing in the main document takes ribbon routing back from any textbox
     onFocus: () => setActiveSubEditor(null),
-    onUpdate: () => {
-      dirtyRef.current = true
+    onUpdate: ({ transaction }) => {
+      // only content-changing transactions dirty the document — meta-only ones
+      // (pagination gaps, search ranges, decorations) dispatch after a load too
+      // and must not light the dirty indicator on a freshly opened file
+      if (transaction.docChanged) dirtyRef.current = true
       forceRender()
     },
   })
@@ -912,10 +915,19 @@ export function App() {
     setCompareResult,
   }
 
-  const loadFile = useCallback(
-    (result: OpenFileResult | null) => loadFileImpl(fileCtxRef.current, result),
-    [],
-  )
+  // True while a document is being (re)loaded. The dirty-reporting effect below
+  // skips transitions during this window: `setContent` inside loadFile/newFile
+  // fires the editor's onUpdate (→ dirtyRef=true) and Tiptap's sync external-store
+  // render observes it before the load resets dirtyRef — without this guard that
+  // transient would light the VSCode dirty dot on every open. Mirrors markdown's
+  // "ready" gate in markDirty.
+  const loadingRef = useRef(false)
+  const loadFile = useCallback((result: OpenFileResult | null) => {
+    loadingRef.current = true
+    return loadFileImpl(fileCtxRef.current, result).finally(() => {
+      loadingRef.current = false
+    })
+  }, [])
 
   // file renamed externally (renamed in the shell Home list) → sync the save path and title-bar file name (content unchanged)
   useEffect(
@@ -973,7 +985,12 @@ export function App() {
   }, [loadFile])
 
   /** new document from the built-in blank template (AI can then generate into it) */
-  const newFile = useCallback(() => newFileImpl(fileCtxRef.current), [])
+  const newFile = useCallback(() => {
+    loadingRef.current = true
+    return newFileImpl(fileCtxRef.current).finally(() => {
+      loadingRef.current = false
+    })
+  }, [])
 
   const openRecent = useCallback(
     async (path: string) => {
@@ -2236,6 +2253,24 @@ export function App() {
   const anyDirtyRef = useRef(false)
   const hasUnsavedChanges = isDocDirty(fileCtxRef.current)
   anyDirtyRef.current = hasUnsavedChanges
+
+  // Report dirty-state transitions to the host so VSCode's tab indicator lights
+  // immediately on any edit path (the crash-recovery tick is only a 30s fallback
+  // and skips paths that early-return). Mirrors markdown:dirty-changed. While a
+  // document is loading, transitions are load-internal (see loadingRef) and must
+  // not light the dot — a clean open reports false and never clears a false dot.
+  //
+  // `isLoading` is captured at RENDER time (not read from loadingRef inside the
+  // effect): effects run after paint, by which point a finished load has already
+  // reset the ref, so reading it there would let a transient load render through.
+  const isLoading = loadingRef.current
+  const reportedDirtyRef = useRef<boolean | null>(null)
+  useEffect(() => {
+    if (isLoading) return
+    if (reportedDirtyRef.current === hasUnsavedChanges) return
+    reportedDirtyRef.current = hasUnsavedChanges
+    window.desktop.setDirty?.(hasUnsavedChanges)
+  }, [hasUnsavedChanges, isLoading])
 
   // close guard: the main process queries dirty state before closing a tab/window; choosing "Save" runs a full save and reports back
   useEffect(() => {

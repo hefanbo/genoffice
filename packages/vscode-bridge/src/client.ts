@@ -1,13 +1,13 @@
 import { isBridgeMessage, tag } from './protocol'
 
 declare global {
-  interface Window {
-    acquireVsCodeApi?: () => {
-      postMessage(message: unknown): void
-      getState(): unknown
-      setState(state: unknown): void
-    }
-  }
+  // `globalThis` (not `window`) so this webview-side module typechecks in both
+  // the DOM lib (apps/docs) and the DOM-less Node host (apps/vscode-ext).
+  var acquireVsCodeApi: (() => {
+    postMessage(message: unknown): void
+    getState(): unknown
+    setState(state: unknown): void
+  }) | undefined
 }
 
 /** A minimal request/response + event-subscription bridge over `postMessage`. */
@@ -21,11 +21,11 @@ export interface Rpc {
 }
 
 export function hasVsCodeApi(): boolean {
-  return typeof window !== 'undefined' && typeof window.acquireVsCodeApi === 'function'
+  return typeof globalThis.acquireVsCodeApi === 'function'
 }
 
 export function createRpc(): Rpc {
-  const vs = window.acquireVsCodeApi
+  const vs = globalThis.acquireVsCodeApi
   if (typeof vs !== 'function') {
     throw new Error('acquireVsCodeApi is unavailable in this context')
   }
@@ -34,7 +34,13 @@ export function createRpc(): Rpc {
   const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>()
   const handlers = new Map<string, Set<(...args: any[]) => void>>()
 
-  window.addEventListener('message', (event: MessageEvent) => {
+  // `addEventListener` isn't on the DOM-less `typeof globalThis` (Node host
+  // typecheck); cast a minimal listener shape — the webview's real DOM listener
+  // has the same contract.
+  const g = globalThis as typeof globalThis & {
+    addEventListener?: (type: 'message', listener: (event: { data: unknown }) => void) => void
+  }
+  g.addEventListener?.('message', (event) => {
     const msg = event.data
     if (!isBridgeMessage(msg)) return
     if (msg.kind === 'response') {
@@ -100,5 +106,5 @@ export function base64ToBytes(b64: string): Uint8Array {
 
 export function base64ToArrayBuffer(b64: string): ArrayBuffer {
   const u8 = base64ToBytes(b64)
-  return u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength)
+  return u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer
 }

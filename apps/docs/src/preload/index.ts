@@ -47,6 +47,9 @@ const api: DesktopApi = {
     ipcRenderer.invoke('docs:save', path, data, auto === true),
   writeRecoveryCopy: (path: string, data: ArrayBuffer) =>
     ipcRenderer.invoke('docs:write-recovery', path, data),
+  // dirty tracking in the Electron shell goes through docs:close-check; setDirty
+  // is only meaningful on the VSCode-webview bridge (channel docs:dirty-changed)
+  setDirty: () => {},
   onTeardown: (handler) => {
     const listener = () => handler()
     ipcRenderer.on('docs:teardown', listener)

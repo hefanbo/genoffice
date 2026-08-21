@@ -18,7 +18,7 @@ export type BridgeMessage =
 
 const NS: 'genoffice' = 'genoffice'
 
-export function tag<T extends { ns?: never }>(msg: T): T & { ns: 'genoffice' } {
+export function tag<T>(msg: T): T & { ns: 'genoffice' } {
   return { ns: NS, ...msg } as T & { ns: 'genoffice' }
 }
 

@@ -182,10 +182,13 @@ function buildHandlers(
     // ---- save ----
     'docs:save': (filePath: string, dataBase64: string, auto?: boolean) => writeDocx(filePath, dataBase64),
     'docs:write-recovery': () => {
-      // The renderer writes a recovery copy whenever it is dirty — use that as
-      // the dirty signal for VSCode's tab indicator.
+      // 30s-tick fallback dirty signal (the renderer also reports transitions
+      // directly via docs:dirty-changed, which lights the indicator immediately).
       editor.markEdited()
       return { ok: true }
+    },
+    'docs:dirty-changed': (dirty: boolean) => {
+      if (dirty) editor.markEdited()
     },
     'docs:save-as': async (defaultName: string, dataBase64: string) => {
       let target = editor.getPendingSaveAsTarget()
@@ -304,7 +307,9 @@ export class DocsEditorProvider implements vscode.CustomEditorProvider<DocsDocum
     _token: vscode.CancellationToken,
   ): Promise<void> {
     const editor = new DocsEditor(document, panel, this.context, this.aiSettings, () => {
-      this._onDidChangeCustomDocument.fire({ document })
+      // no-op undo/redo: the renderer owns its own edit history (ProseMirror);
+      // firing the edit event is what marks the tab dirty in VSCode.
+      this._onDidChangeCustomDocument.fire({ document, undo: () => {}, redo: () => {} })
     })
     await editor.init()
 

@@ -250,7 +250,9 @@ export class MarkdownEditorProvider implements vscode.CustomEditorProvider<Markd
     _token: vscode.CancellationToken,
   ): Promise<void> {
     const editor = new MarkdownEditor(document, panel, this.context, this.aiSettings, () => {
-      this._onDidChangeCustomDocument.fire({ document })
+      // no-op undo/redo: the renderer owns its own edit history (TipTap);
+      // firing the edit event is what marks the tab dirty in VSCode.
+      this._onDidChangeCustomDocument.fire({ document, undo: () => {}, redo: () => {} })
     })
 
     this.editors.set(panel, editor)

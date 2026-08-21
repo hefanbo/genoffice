@@ -169,6 +169,8 @@ export interface DesktopApi {
   ): Promise<{ ok: boolean; error?: string; reason?: 'external-modified' }>
   /** crash-recovery copy of a dirty document, stored under userData */
   writeRecoveryCopy(path: string, data: ArrayBuffer): Promise<{ ok: boolean }>
+  /** dirty-state transition → host lights the tab indicator (no-op in the Electron shell, which tracks dirty itself) */
+  setDirty(dirty: boolean): void
   /** tab closed but webContents kept alive (shell freeze workaround) — stop background timers */
   onTeardown(handler: () => void): () => void
   saveDocxAs(
