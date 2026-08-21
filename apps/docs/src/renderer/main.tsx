@@ -5,8 +5,14 @@ import { LocaleProvider, setModuleLang } from './i18n/locale'
 import type { UiTheme } from '../shared/ipc'
 import { installWebviewBridge } from './webview-bridge'
 import '@genoffice/ui/tokens.css'
+import '@genoffice/ui/screentip.css'
+import '@genoffice/ui/color-picker.css'
+import '@genoffice/ui/dropdown.css'
 import './styles.css'
 import './fonts/fonts.css'
+import { installScreenTips } from '@genoffice/ui'
+
+installScreenTips()
 
 // In a VSCode webview (no Electron preload), back `window.desktop`/`window.projectApi`
 // with the postMessage RPC bridge. Must run before `bootstrap()` reads them.

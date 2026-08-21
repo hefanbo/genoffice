@@ -179,6 +179,18 @@ function buildHandlers(
     },
     'docs:open-path': (filePath: string) => loadPath(filePath),
 
+    // ---- password protection (docx encryption) — not ported to the extension:
+    // graceful no-ops so the renderer's password-intent bookkeeping and the
+    // Protect dialog degrade without throwing on a normal open/save. ----
+    'docs:password-intent-revision': () => 0,
+    'docs:discard-password-intents': () => ({ ok: true }),
+    'docs:set-password': () => ({ ok: false }),
+    'docs:open-decrypt': () => ({
+      ok: false,
+      reason: 'unsupported' as const,
+      error: 'Password-protected docx is not supported in the VSCode extension',
+    }),
+
     // ---- save ----
     'docs:save': (filePath: string, dataBase64: string, auto?: boolean) => writeDocx(filePath, dataBase64),
     'docs:write-recovery': () => {

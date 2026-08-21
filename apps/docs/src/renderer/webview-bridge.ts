@@ -41,6 +41,20 @@ export function installWebviewBridge(): void {
     onRenamedDocx: (handler: (paths: { oldPath: string; newPath: string }) => void) =>
       rpc.on('docs:renamed', handler),
 
+    // password protection (docx encryption; the extension host does not port it)
+    openDocxDecrypt: (path: string, password: string) =>
+      rpc.invoke('docs:open-decrypt', path, password),
+    setDocPassword: (filePath: string | null, password: string | null) =>
+      rpc.invoke('docs:set-password', filePath, password),
+    docPasswordIntentRevision: async () => {
+      const revision: unknown = await rpc.invoke('docs:password-intent-revision')
+      return typeof revision === 'number' && Number.isSafeInteger(revision) && revision >= 0
+        ? revision
+        : 0
+    },
+    discardDocPasswordIntents: (throughRevision: number) =>
+      rpc.invoke('docs:discard-password-intents', throughRevision),
+
     // save
     saveDocx: (path: string, data: ArrayBuffer, auto?: boolean) =>
       rpc.invoke('docs:save', path, bytesToBase64(data), auto === true),

@@ -24,6 +24,7 @@ export function installWebviewBridge(): void {
     saveImage: (data: unknown) => rpc.invoke('markdown:save-image', data),
     readImage: (src: string) => rpc.invoke('markdown:read-image', src),
     onExportRequest: (handler: (format: string) => void) => rpc.on('markdown:export-request', handler),
+    onPrintRequest: (handler: () => void) => rpc.on('markdown:print-request', handler),
     exportDocx: (request: unknown) => rpc.invoke('markdown:export-docx', request),
     exportPdf: (request: unknown) => rpc.invoke('markdown:export-pdf', request),
     getLanguage: () => rpc.invoke('app:get-language'),

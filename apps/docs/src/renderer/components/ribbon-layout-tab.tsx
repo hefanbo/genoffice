@@ -189,7 +189,7 @@ export function LayoutTab({
   const ptInput = (attr: string, title: string) => {
     const twips = Number(paraAttrs[attr]) || 0
     return (
-      <label className="layout-num" title={title}>
+      <label className="layout-num" data-tip={title}>
         <span>{title}</span>
         <input
           type="number"
@@ -216,7 +216,7 @@ export function LayoutTab({
             <button
               className="rb-big"
               disabled={!enabled}
-              title={t('ribbonMargins')}
+              data-tip={t('ribbonMargins')}
               onClick={() => toggleDropdown(setDropdown, 'margins')}
             >
               <span className="rb-big-icon">
@@ -226,7 +226,7 @@ export function LayoutTab({
               <span>{t('ribbonMargins')}</span>
             </button>
             {dropdown === 'margins' && section && (
-              <div className="layout-menu">
+              <div data-rb-panel="" className="layout-menu">
                 {(() => {
                   const storedLastCustom = readLastCustomMargins()
                   const lastCustom =
@@ -285,7 +285,7 @@ export function LayoutTab({
             <button
               className="rb-big"
               disabled={!enabled}
-              title={t('ribbonOrientation')}
+              data-tip={t('ribbonOrientation')}
               onClick={() => toggleDropdown(setDropdown, 'orient')}
             >
               <span className="rb-big-icon">
@@ -295,7 +295,7 @@ export function LayoutTab({
               <span>{t('ribbonOrientation')}</span>
             </button>
             {dropdown === 'orient' && section && (
-              <div className="layout-menu">
+              <div data-rb-panel="" className="layout-menu">
                 <button
                   className={section.orientation === 'portrait' ? 'active' : ''}
                   onClick={() => setOrientation('portrait')}
@@ -315,7 +315,7 @@ export function LayoutTab({
             <button
               className="rb-big"
               disabled={!enabled}
-              title={t('ribbonPaperSize')}
+              data-tip={t('ribbonPaperSize')}
               onClick={() => toggleDropdown(setDropdown, 'paper')}
             >
               <span className="rb-big-icon">
@@ -325,7 +325,7 @@ export function LayoutTab({
               <span>{t('ribbonPaperSize')}</span>
             </button>
             {dropdown === 'paper' && section && (
-              <div className="layout-menu">
+              <div data-rb-panel="" className="layout-menu">
                 {PAPER_SIZES.map((p) => {
                   const portraitW = Math.min(section.pageWidth, section.pageHeight)
                   return (
@@ -346,7 +346,7 @@ export function LayoutTab({
             <button
               className={`rb-big ${section && section.columns > 1 ? 'active' : ''}`}
               disabled={!enabled}
-              title={t('ribbonColumns')}
+              data-tip={t('ribbonColumns')}
               onClick={() => toggleDropdown(setDropdown, 'columns')}
             >
               <span className="rb-big-icon">
@@ -356,7 +356,7 @@ export function LayoutTab({
               <span>{t('ribbonColumns')}</span>
             </button>
             {dropdown === 'columns' && section && (
-              <div className="layout-menu">
+              <div data-rb-panel="" className="layout-menu">
                 {[1, 2, 3].map((n) => (
                   <button
                     key={n}
@@ -380,7 +380,7 @@ export function LayoutTab({
             <button
               className="rb-big"
               disabled={!enabled}
-              title={t('ribbonSectionBreakTip')}
+              data-tip={t('ribbonSectionBreakTip')}
               onClick={() => toggleDropdown(setDropdown, 'sectbreak')}
             >
               <span className="rb-big-icon">
@@ -390,7 +390,7 @@ export function LayoutTab({
               <span>{t('ribbonSectionBreak')}</span>
             </button>
             {dropdown === 'sectbreak' && (
-              <div className="layout-menu">
+              <div data-rb-panel="" className="layout-menu">
                 <button
                   onClick={() => {
                     onInsertSectionBreak('nextPage')
@@ -462,7 +462,7 @@ export function LayoutTab({
             <button
               className="rb-big"
               disabled={!canPosition}
-              title={t('ribbonPosition')}
+              data-tip={t('ribbonPosition')}
               onClick={() => toggleDropdown(setDropdown, 'arrange-pos')}
             >
               <span className="rb-big-icon">
@@ -472,7 +472,7 @@ export function LayoutTab({
               <span>{t('ribbonPosition')}</span>
             </button>
             {dropdown === 'arrange-pos' && (
-              <div className="layout-menu">
+              <div data-rb-panel="" className="layout-menu">
                 <button
                   className={currentWrap ? '' : 'active'}
                   onClick={() => applyInlinePosition()}
@@ -487,7 +487,8 @@ export function LayoutTab({
                         className={`pos-cell ph-${h} pv-${v}${
                           protAttrs?.imagePosH === h && protAttrs?.imagePosV === v ? ' active' : ''
                         }`}
-                        title={t('ribbonPosition')}
+                        data-tip={t('ribbonPosition')}
+                        aria-label={t('ribbonPosition')}
                         onClick={() => applyPositionPreset(h, v)}
                       >
                         <span className="pos-dot" />
@@ -502,7 +503,7 @@ export function LayoutTab({
             <button
               className="rb-big"
               disabled={!canWrap}
-              title={t('ribbonWrapText')}
+              data-tip={t('ribbonWrapText')}
               onClick={() => toggleDropdown(setDropdown, 'arrange-wrap')}
             >
               <span className="rb-big-icon">
@@ -512,7 +513,7 @@ export function LayoutTab({
               <span>{t('ribbonWrapText')}</span>
             </button>
             {dropdown === 'arrange-wrap' && (
-              <div className="layout-menu">
+              <div data-rb-panel="" className="layout-menu">
                 {WRAP_OPTIONS.map((opt) => (
                   <button
                     key={String(opt.value)}
