@@ -10,13 +10,27 @@ import {
   createRpc,
   hasVsCodeApi,
 } from '@genoffice/vscode-bridge'
-import type { DesktopApi, OpenFileResult } from '../shared/ipc'
+import type { DesktopApi, OpenDocxResult, OpenFileResult } from '../shared/ipc'
 import type { ProjectApi } from '@genoffice/project-store'
 
-function decodeOpenResult(r: unknown): OpenFileResult | null {
+function decodeOpenResult(r: unknown): OpenDocxResult {
   if (!r) return null
-  const o = r as { path: string; name: string; data: string; hash: string }
-  return { path: o.path, name: o.name, data: base64ToArrayBuffer(o.data), hash: o.hash }
+  const o = r as {
+    needsPassword?: boolean
+    path: string
+    name: string
+    data?: string
+    hash?: string
+    encrypted?: boolean
+  }
+  if (o.needsPassword) return { needsPassword: true, path: o.path, name: o.name }
+  return {
+    path: o.path,
+    name: o.name,
+    data: base64ToArrayBuffer(o.data!),
+    hash: o.hash!,
+    ...(o.encrypted ? { encrypted: true } : {}),
+  }
 }
 
 export function installWebviewBridge(): void {
@@ -36,14 +50,24 @@ export function installWebviewBridge(): void {
     consumePendingOpenDocx: async () =>
       decodeOpenResult(await rpc.invoke('docs:consume-pending-open')),
     consumeNewBlankDoc: () => rpc.invoke('docs:consume-new-blank'),
-    onOpenDocx: (handler: (result: OpenFileResult) => void) =>
+    onOpenDocx: (handler: (result: Exclude<OpenDocxResult, null>) => void) =>
       rpc.on('docs:opened', (result) => handler(decodeOpenResult(result)!)),
     onRenamedDocx: (handler: (paths: { oldPath: string; newPath: string }) => void) =>
       rpc.on('docs:renamed', handler),
 
     // password protection (docx encryption; the extension host does not port it)
-    openDocxDecrypt: (path: string, password: string) =>
-      rpc.invoke('docs:open-decrypt', path, password),
+    openDocxDecrypt: async (path: string, password: string) => {
+      const res = (await rpc.invoke('docs:open-decrypt', path, password)) as {
+        ok?: boolean
+        reason?: 'wrong-password' | 'unsupported' | 'error'
+        result?: unknown
+        error?: string
+      }
+      if (!res?.ok) {
+        return { ok: false, reason: res?.reason ?? 'error', ...(res?.error ? { error: res.error } : {}) }
+      }
+      return { ok: true, result: decodeOpenResult(res.result) as OpenFileResult }
+    },
     setDocPassword: (filePath: string | null, password: string | null) =>
       rpc.invoke('docs:set-password', filePath, password),
     docPasswordIntentRevision: async () => {
@@ -62,8 +86,8 @@ export function installWebviewBridge(): void {
       rpc.invoke('docs:write-recovery', path, bytesToBase64(data)),
     setDirty: (dirty: boolean) => rpc.send('docs:dirty-changed', dirty),
     onTeardown: (handler: () => void) => rpc.on('docs:teardown', handler),
-    saveDocxAs: (defaultName: string, data: ArrayBuffer) =>
-      rpc.invoke('docs:save-as', defaultName, bytesToBase64(data)),
+    saveDocxAs: (defaultName: string, data: ArrayBuffer, sourcePath?: string | null) =>
+      rpc.invoke('docs:save-as', defaultName, bytesToBase64(data), sourcePath ?? null),
     saveDocxNew: (defaultName: string, data: ArrayBuffer) =>
       rpc.invoke('docs:save-new', defaultName, bytesToBase64(data)),
 

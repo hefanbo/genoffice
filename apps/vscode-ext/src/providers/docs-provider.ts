@@ -12,6 +12,19 @@ import {
 } from '../services/util'
 import { currentTheme } from '../services/theme'
 import { AiSettingsStore } from '../services/ai-settings'
+import {
+  commitDocPasswordSave,
+  currentDocPasswordIntentRevision,
+  discardDocPasswordIntents,
+  docPasswordFor,
+  DocxDecryptError,
+  decryptDocx,
+  encryptDocx,
+  isEncryptedDocx,
+  rememberDocPassword,
+  setDocPassword,
+  snapshotDocPassword,
+} from '../../../docs/src/main/docx-encryption'
 
 const VIEW_TYPE = 'genoffice.docx'
 
@@ -20,7 +33,14 @@ interface OpenFileResult {
   name: string
   data: string // base64
   hash: string
+  encrypted?: boolean
 }
+
+/** mirrors apps/docs OpenDocxResult: encrypted files come back asking for a password */
+type OpenDocxResult = OpenFileResult | { needsPassword: true; path: string; name: string } | null
+
+/** unique per-editor id keying docx-encryption's in-memory password store (mirrors Electron's wcId) */
+let nextDocxWcId = 1
 
 class DocsDocument implements vscode.CustomDocument {
   readonly uri: vscode.Uri
@@ -35,8 +55,10 @@ class DocsEditor {
   readonly bridge: ReturnType<typeof createBridgeHost>
   readonly panel: vscode.WebviewPanel
   readonly document: DocsDocument
+  /** keys docx-encryption's per-editor password state (Electron's webContents id) */
+  readonly wcId = nextDocxWcId++
 
-  private initialResult: OpenFileResult | null = null
+  private initialResult: OpenDocxResult = null
   private initialConsumed = false
   private saveWaiters: Array<() => void> = []
   private pendingSaveAsTarget: vscode.Uri | null = null
@@ -56,16 +78,31 @@ class DocsEditor {
 
   async init(): Promise<void> {
     const bytes = await readFileBytes(this.document.uri)
-    this.lastSavedBytes = bytes
-    this.initialResult = {
-      path: this.document.uri.fsPath,
-      name: basenameOf(this.document.uri.fsPath),
-      data: bytesToBase64(bytes),
-      hash: sha256Hex(bytes),
+    this.lastSavedBytes = bytes // on-disk bytes; backups stay as encrypted as the file
+    const path = this.document.uri.fsPath
+    const name = basenameOf(path)
+    const buffer = Buffer.from(bytes)
+    if (isEncryptedDocx(buffer)) {
+      const pwd = docPasswordFor(this.wcId, path)
+      if (!pwd) {
+        this.initialResult = { needsPassword: true, path, name }
+        return
+      }
+      const plain = await decryptDocx(buffer, pwd)
+      const plainBytes = new Uint8Array(plain)
+      this.initialResult = {
+        path,
+        name,
+        data: bytesToBase64(plainBytes),
+        hash: sha256Hex(plain),
+        encrypted: true,
+      }
+      return
     }
+    this.initialResult = { path, name, data: bytesToBase64(bytes), hash: sha256Hex(bytes) }
   }
 
-  consumeInitial(): OpenFileResult | null {
+  consumeInitial(): OpenDocxResult {
     if (this.initialConsumed) return null
     this.initialConsumed = true
     return this.initialResult
@@ -130,16 +167,28 @@ class DocsEditor {
   }
 }
 
-async function loadPath(fsPath: string): Promise<OpenFileResult | null> {
+async function loadPath(fsPath: string, wcId: number): Promise<OpenDocxResult> {
   try {
     if (!/\.docx$/i.test(fsPath)) return null
     const bytes = await readFileBytes(vscode.Uri.file(fsPath))
-    return {
-      path: fsPath,
-      name: basenameOf(fsPath),
-      data: bytesToBase64(bytes),
-      hash: sha256Hex(bytes),
+    const name = basenameOf(fsPath)
+    const buffer = Buffer.from(bytes)
+    if (isEncryptedDocx(buffer)) {
+      // a remembered disk password (same editor reopens, e.g. revert) decrypts
+      // silently; otherwise the renderer shows the password prompt
+      const pwd = docPasswordFor(wcId, fsPath)
+      if (!pwd) return { needsPassword: true, path: fsPath, name }
+      const plain = await decryptDocx(buffer, pwd)
+      const plainBytes = new Uint8Array(plain)
+      return {
+        path: fsPath,
+        name,
+        data: bytesToBase64(plainBytes),
+        hash: sha256Hex(plain),
+        encrypted: true,
+      }
     }
+    return { path: fsPath, name, data: bytesToBase64(bytes), hash: sha256Hex(bytes) }
   } catch {
     return null
   }
@@ -150,12 +199,23 @@ function buildHandlers(
   context: vscode.ExtensionContext,
   aiSettings: AiSettingsStore,
 ): BridgeHandler {
-  const writeDocx = async (filePath: string, dataBase64: string): Promise<{ ok: boolean; path?: string; error?: string }> => {
+  const writeDocx = async (
+    filePath: string,
+    dataBase64: string,
+    snapshotKey: string | null,
+  ): Promise<{ ok: boolean; path?: string; error?: string; passwordIntentPending?: boolean }> => {
     try {
-      const bytes = base64ToBytes(dataBase64)
-      await writeFileBytes(vscode.Uri.file(filePath), bytes)
-      editor.markSaved(bytes)
-      return { ok: true }
+      const buffer = Buffer.from(base64ToBytes(dataBase64))
+      // effective password for this save: a desired intent wins, else the disk
+      // password when the file is encrypted (mirrors snapshotDocPassword in
+      // docs-main); null = keep the file plain
+      const passwordState = snapshotDocPassword(editor.wcId, snapshotKey)
+      const outBytes = passwordState.password ? encryptDocx(buffer, passwordState.password) : buffer
+      const out = new Uint8Array(outBytes)
+      await writeFileBytes(vscode.Uri.file(filePath), out)
+      const passwordIntentPending = commitDocPasswordSave(editor.wcId, passwordState, filePath)
+      editor.markSaved(out)
+      return { ok: true, passwordIntentPending }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) }
     }
@@ -175,24 +235,48 @@ function buildHandlers(
         canSelectMany: false,
       })
       if (!picked || picked.length === 0) return null
-      return loadPath(picked[0].fsPath)
+      return loadPath(picked[0].fsPath, editor.wcId)
     },
-    'docs:open-path': (filePath: string) => loadPath(filePath),
+    'docs:open-path': (filePath: string) => loadPath(filePath, editor.wcId),
 
-    // ---- password protection (docx encryption) — not ported to the extension:
-    // graceful no-ops so the renderer's password-intent bookkeeping and the
-    // Protect dialog degrade without throwing on a normal open/save. ----
-    'docs:password-intent-revision': () => 0,
-    'docs:discard-password-intents': () => ({ ok: true }),
-    'docs:set-password': () => ({ ok: false }),
-    'docs:open-decrypt': () => ({
-      ok: false,
-      reason: 'unsupported' as const,
-      error: 'Password-protected docx is not supported in the VSCode extension',
-    }),
+    // ---- password protection (docx encryption) — ported from the Electron
+    // main process via docx-encryption.ts, keyed by per-editor wcId. ----
+    'docs:password-intent-revision': () => currentDocPasswordIntentRevision(),
+    'docs:discard-password-intents': (throughRevision: number) => {
+      discardDocPasswordIntents(editor.wcId, throughRevision)
+      return { ok: true }
+    },
+    'docs:set-password': (filePath: string | null, password: string | null) => {
+      setDocPassword(editor.wcId, filePath, password)
+      return { ok: true }
+    },
+    'docs:open-decrypt': async (path: string, password: string) => {
+      try {
+        const bytes = await readFileBytes(vscode.Uri.file(path))
+        const buffer = Buffer.from(bytes)
+        if (!isEncryptedDocx(buffer)) return { ok: false, reason: 'error', error: 'not encrypted' }
+        const plain = await decryptDocx(buffer, password)
+        const plainBytes = new Uint8Array(plain)
+        rememberDocPassword(editor.wcId, path, password)
+        return {
+          ok: true,
+          result: {
+            path,
+            name: basenameOf(path),
+            data: bytesToBase64(plainBytes),
+            hash: sha256Hex(plain),
+            encrypted: true,
+          },
+        }
+      } catch (err) {
+        if (err instanceof DocxDecryptError) return { ok: false, reason: err.reason }
+        return { ok: false, reason: 'error', error: String(err) }
+      }
+    },
 
     // ---- save ----
-    'docs:save': (filePath: string, dataBase64: string, auto?: boolean) => writeDocx(filePath, dataBase64),
+    'docs:save': (filePath: string, dataBase64: string, auto?: boolean) =>
+      writeDocx(filePath, dataBase64, filePath),
     'docs:write-recovery': () => {
       // 30s-tick fallback dirty signal (the renderer also reports transitions
       // directly via docs:dirty-changed, which lights the indicator immediately).
@@ -202,7 +286,7 @@ function buildHandlers(
     'docs:dirty-changed': (dirty: boolean) => {
       if (dirty) editor.markEdited()
     },
-    'docs:save-as': async (defaultName: string, dataBase64: string) => {
+    'docs:save-as': async (defaultName: string, dataBase64: string, sourcePath?: string | null) => {
       let target = editor.getPendingSaveAsTarget()
       if (!target) {
         const picked = await vscode.window.showSaveDialog({
@@ -212,16 +296,24 @@ function buildHandlers(
         if (!picked) return { ok: false }
         target = picked
       }
-      const result = await writeDocx(target.fsPath, dataBase64)
+      // the source document's desired password carries to the new path
+      const snapshotKey =
+        typeof sourcePath === 'string' && sourcePath ? sourcePath : editor.document.uri.fsPath
+      const result = await writeDocx(target.fsPath, dataBase64, snapshotKey)
       editor.setSaveAsTarget(null)
-      return result.ok ? { ok: true, path: target.fsPath } : result
+      return result.ok
+        ? { ok: true, path: target.fsPath, passwordIntentPending: result.passwordIntentPending }
+        : result
     },
     'docs:save-new': async (defaultName: string, dataBase64: string) => {
       const dir = vscode.Uri.joinPath(context.globalStorageUri, 'documents')
       await vscode.workspace.fs.createDirectory(dir)
       const target = vscode.Uri.joinPath(dir, defaultName)
-      const result = await writeDocx(target.fsPath, dataBase64)
-      return result.ok ? { ok: true, path: target.fsPath } : result
+      // snapshot key null → the pathless document's desired password
+      const result = await writeDocx(target.fsPath, dataBase64, null)
+      return result.ok
+        ? { ok: true, path: target.fsPath, passwordIntentPending: result.passwordIntentPending }
+        : result
     },
 
     // ---- recent ----
