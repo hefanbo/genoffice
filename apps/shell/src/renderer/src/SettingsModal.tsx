@@ -312,6 +312,29 @@ function AiModelPane({ t }: { t: TFunc }) {
               onChange={(e) => updateConfig({ baseUrl: e.target.value })}
             />
           </div>
+          {/* custom provider wire protocol (feat/custom-api): anthropic → Anthropic
+              /v1/messages, default → OpenAI-compatible /chat/completions */}
+          {meta?.needsBaseUrl && (
+            <div className="set-field">
+              <div className="set-field-text">
+                <div className="set-field-stack">
+                  <label className="set-field-label" htmlFor="set-ai-protocol">
+                    {t('setProtocol')}
+                  </label>
+                </div>
+              </div>
+              <Dropdown
+                className="set-dd"
+                value={config.protocol ?? 'openai'}
+                ariaLabel={t('setProtocol')}
+                options={[
+                  { value: 'openai', label: 'OpenAI-compatible' },
+                  { value: 'anthropic', label: 'Anthropic' },
+                ]}
+                onPick={(v) => updateConfig({ protocol: v as 'openai' | 'anthropic' })}
+              />
+            </div>
+          )}
         </>
       )}
       <div className="set-field">

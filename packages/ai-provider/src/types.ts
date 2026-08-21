@@ -27,6 +27,8 @@ export interface AiProviderConfig {
   model: string
   /** required for custom; for other direct providers it overrides the default endpoint (regional mirrors) */
   baseUrl?: string | undefined
+  /** custom provider API protocol; defaults to 'openai' (OpenAI-compatible /chat/completions). Set to 'anthropic' for Anthropic-compatible /v1/messages endpoints. */
+  protocol?: 'openai' | 'anthropic'
 }
 
 export interface AiProviderMeta {

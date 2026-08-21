@@ -142,8 +142,10 @@ export const AI_PROVIDER_ADAPTERS: Record<AiProviderId, ProviderAdapter> = {
     capabilities: { auth: 'api-key', vision: true },
     resolveEndpoint(config) {
       if (!config.baseUrl) throw new Error('A custom provider requires a Base URL')
+      // the custom provider picks its wire protocol via AiProviderConfig.protocol
+      // ('anthropic' → Anthropic /v1/messages, default → OpenAI-compatible)
       return {
-        protocol: 'openai-compatible',
+        protocol: config.protocol === 'anthropic' ? 'anthropic' : 'openai-compatible',
         baseUrl: config.baseUrl,
         ...(modelHasFixedSampling(config.model) ? { omitTemperature: true } : {}),
       }
