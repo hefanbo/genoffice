@@ -47,3 +47,15 @@ export function IconEnter(props: IconProps) {
     </Svg>
   )
 }
+
+/** settings glyph (two sliders) — shared by the desktop shell SettingsModal and
+ *  the VSCode docs renderer's AI panel settings button */
+export function IconSettings(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M2 5h8M13 5h1M2 11h1M6 11h8" strokeWidth="1.3" strokeLinecap="round" />
+      <circle cx="11.5" cy="5" r="1.7" strokeWidth="1.3" />
+      <circle cx="4.5" cy="11" r="1.7" strokeWidth="1.3" />
+    </Svg>
+  )
+}

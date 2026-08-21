@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Dropdown } from '@genoffice/ui'
+import { Dropdown, IconSettings } from '@genoffice/ui'
 import type { AiSettings } from '@genoffice/ai-provider'
 import { useI18n } from './locale'
 import type { StringKey, TFunc } from './locale'
@@ -98,18 +98,7 @@ function SectionIcon({ id }: { id: SectionId }) {
     )
   }
   if (id === 'general') {
-    return (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <path
-          d="M2 5h8M13 5h1M2 11h1M6 11h8"
-          stroke="currentColor"
-          strokeWidth="1.3"
-          strokeLinecap="round"
-        />
-        <circle cx="11.5" cy="5" r="1.7" stroke="currentColor" strokeWidth="1.3" />
-        <circle cx="4.5" cy="11" r="1.7" stroke="currentColor" strokeWidth="1.3" />
-      </svg>
-    )
+    return <IconSettings size={16} />
   }
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -245,6 +234,74 @@ function AiModelPane({ t }: { t: TFunc }) {
       <div className="set-field-desc set-ai-note">
         {isGenspark ? t('setAiGensparkHint') : t('setAiByokNote')}
       </div>
+      {!isGenspark && (
+        <>
+          {/* custom provider wire protocol: anthropic → Anthropic /v1/messages,
+              default → OpenAI-compatible /chat/completions */}
+          {meta?.needsBaseUrl && (
+            <div className="set-field">
+              <div className="set-field-text">
+                <div className="set-field-stack">
+                  <label className="set-field-label" htmlFor="set-ai-protocol">
+                    {t('setProtocol')}
+                  </label>
+                </div>
+              </div>
+              <Dropdown
+                className="set-dd"
+                value={config.protocol ?? 'openai'}
+                ariaLabel={t('setProtocol')}
+                options={[
+                  { value: 'openai', label: 'OpenAI-compatible' },
+                  { value: 'anthropic', label: 'Anthropic' },
+                ]}
+                onPick={(v) => updateConfig({ protocol: v as 'openai' | 'anthropic' })}
+              />
+            </div>
+          )}
+          <div className="set-field">
+            <div className="set-field-text">
+              <div className="set-field-stack">
+                <label className="set-field-label" htmlFor="set-ai-base-url">
+                  {t('setAiBaseUrl')}
+                </label>
+                {!meta?.needsBaseUrl && (
+                  <div className="set-field-desc">{t('setAiBaseUrlHint')}</div>
+                )}
+              </div>
+            </div>
+            <input
+              id="set-ai-base-url"
+              className="set-input"
+              type="text"
+              value={config.baseUrl ?? ''}
+              placeholder={meta?.needsBaseUrl ? 'https://…/v1' : meta?.defaultBaseUrl}
+              spellCheck={false}
+              onChange={(e) => updateConfig({ baseUrl: e.target.value })}
+            />
+          </div>
+          <div className="set-field">
+            <div className="set-field-text">
+              <div className="set-field-stack">
+                <label className="set-field-label" htmlFor="set-ai-key">
+                  {t('setAiApiKey')}
+                </label>
+                <div className="set-field-desc">{t('setAiKeyHint')}</div>
+              </div>
+            </div>
+            <input
+              id="set-ai-key"
+              className="set-input"
+              type="password"
+              value={config.apiKey}
+              placeholder={meta?.keyPlaceholder ?? 'API Key'}
+              spellCheck={false}
+              autoComplete="off"
+              onChange={(e) => updateConfig({ apiKey: e.target.value })}
+            />
+          </div>
+        </>
+      )}
       <div className="set-field">
         <div className="set-field-text">
           <label className="set-field-label">{t('setAiModelId')}</label>
@@ -269,74 +326,6 @@ function AiModelPane({ t }: { t: TFunc }) {
           />
         )}
       </div>
-      {!isGenspark && (
-        <>
-          <div className="set-field">
-            <div className="set-field-text">
-              <div className="set-field-stack">
-                <label className="set-field-label" htmlFor="set-ai-key">
-                  {t('setAiApiKey')}
-                </label>
-                <div className="set-field-desc">{t('setAiKeyHint')}</div>
-              </div>
-            </div>
-            <input
-              id="set-ai-key"
-              className="set-input"
-              type="password"
-              value={config.apiKey}
-              placeholder={meta?.keyPlaceholder ?? 'API Key'}
-              spellCheck={false}
-              autoComplete="off"
-              onChange={(e) => updateConfig({ apiKey: e.target.value })}
-            />
-          </div>
-          <div className="set-field">
-            <div className="set-field-text">
-              <div className="set-field-stack">
-                <label className="set-field-label" htmlFor="set-ai-base-url">
-                  {t('setAiBaseUrl')}
-                </label>
-                {!meta?.needsBaseUrl && (
-                  <div className="set-field-desc">{t('setAiBaseUrlHint')}</div>
-                )}
-              </div>
-            </div>
-            <input
-              id="set-ai-base-url"
-              className="set-input"
-              type="text"
-              value={config.baseUrl ?? ''}
-              placeholder={meta?.needsBaseUrl ? 'https://…/v1' : meta?.defaultBaseUrl}
-              spellCheck={false}
-              onChange={(e) => updateConfig({ baseUrl: e.target.value })}
-            />
-          </div>
-          {/* custom provider wire protocol (feat/custom-api): anthropic → Anthropic
-              /v1/messages, default → OpenAI-compatible /chat/completions */}
-          {meta?.needsBaseUrl && (
-            <div className="set-field">
-              <div className="set-field-text">
-                <div className="set-field-stack">
-                  <label className="set-field-label" htmlFor="set-ai-protocol">
-                    {t('setProtocol')}
-                  </label>
-                </div>
-              </div>
-              <Dropdown
-                className="set-dd"
-                value={config.protocol ?? 'openai'}
-                ariaLabel={t('setProtocol')}
-                options={[
-                  { value: 'openai', label: 'OpenAI-compatible' },
-                  { value: 'anthropic', label: 'Anthropic' },
-                ]}
-                onPick={(v) => updateConfig({ protocol: v as 'openai' | 'anthropic' })}
-              />
-            </div>
-          )}
-        </>
-      )}
       <div className="set-field">
         <div className="set-field-text">
           <div className="set-field-stack">

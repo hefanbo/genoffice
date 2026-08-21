@@ -134,6 +134,7 @@ interface RibbonProps {
   onOpen: () => void
   onSave: () => void
   onSaveAs: () => void
+  onExportPdf?: () => void
   showAi: boolean
   onToggleAi: () => void
   section: SectionSettings | null
@@ -550,6 +551,7 @@ function RibbonInner({
   onOpen,
   onSave,
   onSaveAs,
+  onExportPdf,
   showAi,
   onToggleAi,
   section,
@@ -1648,6 +1650,17 @@ function RibbonInner({
                 >
                   {t('ribbonSaveAs')} <span className="file-menu-key">Ctrl+Shift+S</span>
                 </button>
+                {onExportPdf && (
+                  <button
+                    disabled={!hasDoc}
+                    onClick={() => {
+                      setDropdown(null)
+                      onExportPdf()
+                    }}
+                  >
+                    {t('appExportPdf')}
+                  </button>
+                )}
               </div>
             )}
           </div>

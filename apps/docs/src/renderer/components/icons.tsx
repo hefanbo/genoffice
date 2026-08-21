@@ -1351,6 +1351,8 @@ export function IconGear(props: IconProps) {
   )
 }
 
+export { IconSettings } from '@genoffice/ui'
+
 /** collapse the left-docked AI panel: sheets-parity glyph (16-canvas, 1.2/1.3 stroke),
  *  self-contained so the shared Svg wrapper's pinned stroke doesn't alter its weight */
 export function IconSidebarCollapse({ size = 20 }: IconProps) {

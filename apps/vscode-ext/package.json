@@ -76,23 +76,6 @@
       }
     ],
     "menus": {
-      "editor/title": [
-        {
-          "command": "genoffice.docs.toggleAi",
-          "when": "activeCustomEditorId == genoffice.docx",
-          "group": "navigation@1"
-        },
-        {
-          "command": "genoffice.docs.exportPdf",
-          "when": "activeCustomEditorId == genoffice.docx",
-          "group": "navigation@2"
-        },
-        {
-          "command": "genoffice.docs.save",
-          "when": "activeCustomEditorId == genoffice.docx",
-          "group": "navigation@3"
-        }
-      ],
       "commandPalette": [
         {
           "command": "genoffice.docs.save",
@@ -139,27 +122,7 @@
         "mac": "cmd+f",
         "when": "activeCustomEditorId == genoffice.docx"
       }
-    ],
-    "configuration": {
-      "title": "GenOffice",
-      "properties": {
-        "genoffice.ai.provider": {
-          "type": "string",
-          "default": "genspark",
-          "description": "Default AI provider for the assistant."
-        },
-        "genoffice.ai.model": {
-          "type": "string",
-          "default": "",
-          "description": "Model override for the selected AI provider (empty = provider default)."
-        },
-        "genoffice.ai.baseUrl": {
-          "type": "string",
-          "default": "",
-          "description": "Custom base URL (for the 'custom' provider)."
-        }
-      }
-    }
+    ]
   },
   "scripts": {
     "build": "node esbuild.config.mjs",

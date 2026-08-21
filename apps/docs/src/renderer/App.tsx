@@ -38,6 +38,7 @@ import {
 import type { AiSettings, OpenDocxResult } from '../shared/ipc'
 import { AI_PROVIDERS } from '../shared/ipc'
 import { AiPanel } from './ai/AiPanel'
+import { AiSettingsDialog } from './ai/AiSettingsDialog'
 import { asianCharCount, countWords, nonAsianWordCount } from './word-count'
 import { CommentsPanel } from './components/CommentsPanel'
 import { EquationModal } from './components/EquationModal'
@@ -360,6 +361,7 @@ export function App() {
   } | null>(null)
   /** Review > Protect: the combined Word-style Protect Document dialog */
   const [showProtectDialog, setShowProtectDialog] = useState(false)
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false)
   /** prompt for a document with a password to modify (w:writeProtection): enter it or open read-only */
   const [modifyPwdPrompt, setModifyPwdPrompt] = useState<{
     value: string
@@ -774,6 +776,12 @@ export function App() {
     void window.desktop.getRecentFiles().then(setRecent)
     void window.desktop.getAiSettings().then(setSettings)
   }, [])
+
+  /** the settings dialog already persisted via setAiSettings; refresh the panel state */
+  const handleAiSettingsSaved = (next: AiSettings) => {
+    setSettings(next)
+    setAiSettingsOpen(false)
+  }
 
   useEffect(() => {
     localStorage.setItem('aidocs.showAi', showAi ? '1' : '0')
@@ -3205,6 +3213,7 @@ export function App() {
     onOpen: () => void openFile(),
     onSave: () => void save(false),
     onSaveAs: () => void save(true),
+    onExportPdf: () => void exportPdf(),
     onToggleAi: () => setShowAi((v) => !v),
     onSection: (next: SectionSettings) => {
       // layout applies to the cursor's section; the final section's sectPr goes through SaveOptions.section (also drives canvas geometry)
@@ -3484,6 +3493,7 @@ export function App() {
               open={showAi}
               onExpand={() => setShowAi(true)}
               onCollapse={() => setShowAi(false)}
+              onOpenSettings={() => setAiSettingsOpen(true)}
               filePath={doc?.filePath ?? null}
             />
           </div>
@@ -3932,6 +3942,14 @@ export function App() {
           removePersonalInfo={removePersonalInfo}
           onCancel={() => setShowProtectDialog(false)}
           onApply={(result) => void applyProtectDialog(result)}
+        />
+      )}
+
+      {aiSettingsOpen && (
+        <AiSettingsDialog
+          settings={settings}
+          onClose={() => setAiSettingsOpen(false)}
+          onSaved={handleAiSettingsSaved}
         />
       )}
 

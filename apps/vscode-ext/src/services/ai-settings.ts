@@ -11,15 +11,28 @@ const PROVIDER_IDS: AiProviderId[] = [
   'custom',
 ]
 const KEY_PREFIX = 'genoffice.ai.key.'
+// Non-secret prefs live in the extension's own storage (globalState), never in
+// vscode settings.json — the extension contributes no genoffice.ai.* settings,
+// so the Settings UI stays clean and the AI config is edited only via the
+// in-webview dialog.
+const PREF_PROVIDER = 'genoffice.ai.provider'
+const PREF_MODEL = 'genoffice.ai.model'
+const PREF_BASE_URL = 'genoffice.ai.baseUrl'
+const PREF_PROTOCOL = 'genoffice.ai.protocol'
 
 /**
  * BYOK settings: API keys live in SecretStorage (never in configuration or the
- * webview), non-secret prefs (provider/model/baseUrl) live in configuration.
+ * webview), non-secret prefs (provider/model/baseUrl/protocol) live in the
+ * extension's globalState.
  */
 export class AiSettingsStore {
-  private config = vscode.workspace.getConfiguration('genoffice.ai')
+  private readonly secrets: vscode.SecretStorage
+  private readonly state: vscode.Memento
 
-  constructor(private secrets: vscode.SecretStorage) {}
+  constructor(context: vscode.ExtensionContext) {
+    this.secrets = context.secrets
+    this.state = context.globalState
+  }
 
   async get(): Promise<AiSettings> {
     const keys: Partial<Record<AiProviderId, string>> = {}
@@ -29,14 +42,17 @@ export class AiSettingsStore {
     }
     const settings = defaultAiSettings(keys)
 
-    const provider = this.config.get<string>('provider') as AiProviderId | undefined
+    const provider = this.state.get<string>(PREF_PROVIDER) as AiProviderId | undefined
     if (provider && settings.providers[provider]) settings.provider = provider
 
-    const model = this.config.get<string>('model')
+    const model = this.state.get<string>(PREF_MODEL)
     if (model) settings.providers[settings.provider].model = model
 
-    const baseUrl = this.config.get<string>('baseUrl')
+    const baseUrl = this.state.get<string>(PREF_BASE_URL)
     if (baseUrl) settings.providers[settings.provider].baseUrl = baseUrl
+
+    const protocol = this.state.get<'openai' | 'anthropic'>(PREF_PROTOCOL)
+    if (protocol) settings.providers[settings.provider].protocol = protocol
 
     return settings
   }
@@ -47,13 +63,12 @@ export class AiSettingsStore {
       if (key) await this.secrets.store(KEY_PREFIX + id, key)
       else await this.secrets.delete(KEY_PREFIX + id)
     }
-    await this.config.update('provider', settings.provider, vscode.ConfigurationTarget.Global)
+    await this.state.update(PREF_PROVIDER, settings.provider)
     const cfg = settings.providers?.[settings.provider]
     if (cfg) {
-      await this.config.update('model', cfg.model || '', vscode.ConfigurationTarget.Global)
-      if (cfg.baseUrl !== undefined) {
-        await this.config.update('baseUrl', cfg.baseUrl, vscode.ConfigurationTarget.Global)
-      }
+      await this.state.update(PREF_MODEL, cfg.model || '')
+      if (cfg.baseUrl !== undefined) await this.state.update(PREF_BASE_URL, cfg.baseUrl)
+      if (cfg.protocol !== undefined) await this.state.update(PREF_PROTOCOL, cfg.protocol)
     }
   }
 }

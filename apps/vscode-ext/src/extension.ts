@@ -4,7 +4,7 @@ import { registerDocsEditor, type DocsEditorApi } from './providers/docs-provide
 import { registerMarkdownEditor } from './providers/markdown-provider'
 
 export function activate(context: vscode.ExtensionContext): void {
-  const aiSettings = new AiSettingsStore(context.secrets)
+  const aiSettings = new AiSettingsStore(context)
   const docs = registerDocsEditor(context, aiSettings)
   context.subscriptions.push({ dispose: () => docs.dispose() })
   context.subscriptions.push(registerMarkdownEditor(context, aiSettings))

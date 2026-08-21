@@ -29,7 +29,7 @@ import fileVideoIcon from '../assets/file-video.png'
 import fileVoiceIcon from '../assets/file-voice.png'
 import fileDocumentIcon from '../assets/file-document.png'
 import fileGeneralIcon from '../assets/file-general.png'
-import { IconNewChat, IconSidebarCollapse } from '../components/icons'
+import { IconNewChat, IconSettings, IconSidebarCollapse } from '../components/icons'
 
 interface ToolActivity {
   name: string
@@ -260,6 +260,8 @@ interface AiPanelProps {
   onExpand?: () => void
   /** collapse the panel to the sidebar rail */
   onCollapse?: () => void
+  /** open the in-webview AI model settings dialog */
+  onOpenSettings?: () => void
   /** Absolute path of the currently open file (used for chat-history persistence) */
   filePath?: string | null
 }
@@ -274,6 +276,7 @@ export function AiPanel({
   open = true,
   onExpand,
   onCollapse,
+  onOpenSettings,
   filePath,
 }: AiPanelProps) {
   const { t } = useI18n()
@@ -953,6 +956,16 @@ export function AiPanel({
           {t('aiPanelTitle')}
         </span>
         <div className="ai-panel-header-actions">
+          {onOpenSettings && (
+            <button
+              className="ai-header-btn"
+              onClick={onOpenSettings}
+              data-tip={t('aiSettingsTitle')}
+              aria-label={t('aiSettingsTitle')}
+            >
+              <IconSettings size={16} />
+            </button>
+          )}
           {chat.length > 0 && (
             <button
               className="ai-header-btn"
